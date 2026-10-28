@@ -15,11 +15,31 @@ interface ApiPredictionResponse {
   predicted_class: 'NORMAL' | 'PNEUMONIA';
   probabilities: Record<string, number>;
   model: string;
+  runtime?: string;
   disclaimer?: string;
 }
 
-const RAW_API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
-export const API_URL = RAW_API_URL.replace(/\/$/, '');
+export const resolveApiBase = (): string => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && envUrl.trim()) {
+    return envUrl.trim().replace(/\/$/, '');
+  }
+
+  // When deployed to production (e.g. Vercel) or when running on any remote host,
+  // use the same-origin '/api' serverless endpoint.
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+    if (!isLocal) {
+      return '/api';
+    }
+  }
+
+  // In local dev, use relative /api (proxied by Vite) or fallback to 127.0.0.1:8000
+  return '/api';
+};
+
+export const API_URL = resolveApiBase();
 
 export async function predictXRay(
   file: File,
@@ -29,10 +49,29 @@ export async function predictXRay(
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${API_URL}/predict`, {
-    method: 'POST',
-    body: formData,
-  });
+  const base = resolveApiBase();
+  // Primary attempt using resolved base URL
+  let response: Response;
+  try {
+    response = await fetch(`${base}/predict`, {
+      method: 'POST',
+      body: formData,
+    });
+  } catch (initialErr) {
+    // If local proxy failed and base is '/api', fallback to direct localhost:8000
+    if (base === '/api') {
+      try {
+        response = await fetch('http://127.0.0.1:8000/predict', {
+          method: 'POST',
+          body: formData,
+        });
+      } catch {
+        throw initialErr;
+      }
+    } else {
+      throw initialErr;
+    }
+  }
 
   if (!response.ok) {
     const message = await response.text();
@@ -55,7 +94,7 @@ export async function predictXRay(
     isPneumonia,
     confidence: Math.round(confidence * 10) / 10,
     modelKey,
-    modelName: data.model || modelName,
+    modelName: data.runtime ? `${data.model} (${data.runtime})` : data.model || modelName,
     fileName: file.name,
     uploadedAt: new Date().toLocaleString(),
     isDemo: false,
@@ -67,18 +106,19 @@ export async function simulatePrediction(
   modelKey: ModelKey,
   modelName: string,
 ): Promise<PredictionResult> {
-  // Add realistic simulated processing delay
   await new Promise((resolve) => setTimeout(resolve, 800));
 
-  // Determine prediction based on filename or pseudo-random hash
   const lowerName = file.name.toLowerCase();
   let isPneumonia = true;
   if (lowerName.includes('normal') || lowerName.includes('healthy')) {
     isPneumonia = false;
-  } else if (lowerName.includes('pneumonia') || lowerName.includes('bacteria') || lowerName.includes('virus')) {
+  } else if (
+    lowerName.includes('pneumonia') ||
+    lowerName.includes('bacteria') ||
+    lowerName.includes('virus')
+  ) {
     isPneumonia = true;
   } else {
-    // Hash file name for consistent demo result per file
     let hash = 0;
     for (let i = 0; i < file.name.length; i++) {
       hash = (hash << 5) - hash + file.name.charCodeAt(i);
@@ -87,7 +127,7 @@ export async function simulatePrediction(
     isPneumonia = Math.abs(hash) % 2 === 0;
   }
 
-  const baseConfidence = 92 + Math.random() * 6; // 92% to 98%
+  const baseConfidence = 92 + Math.random() * 6;
   const confidence = Math.round(baseConfidence * 10) / 10;
 
   return {

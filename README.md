@@ -32,15 +32,22 @@ An end-to-end deep learning web application for automated detection of pneumonia
 ## 📁 Repository Structure
 
 ```text
+├── api/
+│   ├── index.py                     # Vercel Serverless Function (FastAPI + ONNX Runtime)
+│   ├── requirements.txt             # Lightweight dependencies for Vercel (<100MB)
+│   └── models/
+│       ├── chest_xray_model.onnx    # High-speed ONNX format of the trained DenseNet121 model
+│       └── class_names.json         # Label mapping (["NORMAL", "PNEUMONIA"])
+│
 ├── Backend/
 │   ├── models/
-│   │   ├── chest_xray_model.keras   # Trained DenseNet121 model weights (28 MB)
-│   │   ├── class_names.json         # Label mapping (["NORMAL", "PNEUMONIA"])
+│   │   ├── chest_xray_model.keras   # Trained Keras model weights
+│   │   ├── class_names.json         # Label mapping
 │   │   ├── training_log.csv         # Training epochs, loss, and accuracy history
 │   │   └── README.md                # Model specifications & training hyperparameters
-│   ├── api.py                       # FastAPI prediction & health service
+│   ├── api.py                       # Local FastAPI prediction service (TensorFlow)
 │   ├── train_model.py               # Model training and evaluation script
-│   └── requirements.txt             # Python dependencies
+│   └── requirements.txt             # Full Python dependencies (TensorFlow, Scikit-learn)
 │
 ├── public/
 │   └── favicon.svg                  # Project icon
@@ -55,10 +62,11 @@ An end-to-end deep learning web application for automated detection of pneumonia
 ├── .gitignore                       # Clean Git rules (excludes heavy datasets & venvs)
 ├── index.html                       # HTML template
 ├── package.json                     # NPM dependencies & build scripts
+├── requirements.txt                 # Serverless dependencies for Vercel
 ├── tailwind.config.js               # Tailwind styling configuration
 ├── tsconfig.json                    # TypeScript compiler configuration
-├── vercel.json                      # Vercel deployment & rewrite configuration
-├── vite.config.ts                   # Vite bundler configuration
+├── vercel.json                      # Vercel deployment & API rewrite configuration
+├── vite.config.ts                   # Vite bundler & local dev proxy configuration
 └── README.md                        # Documentation
 ```
 
@@ -113,30 +121,25 @@ Visit `http://localhost:5173` in your browser. The frontend will automatically d
 
 ---
 
-## ☁️ Deploying to Vercel
+## ☁️ Deploying to Vercel (Full-Stack: Frontend + Serverless Backend)
 
-This repository is optimized for one-click hosting on **Vercel**.
+This repository is **100% full-stack ready for Vercel**. When imported into Vercel, both the React frontend and the FastAPI/ONNX serverless backend deploy automatically without any separate servers required!
 
 ### Step 1: Import Repository
 1. Log in to [Vercel](https://vercel.com).
 2. Click **Add New...** → **Project**.
 3. Import your GitHub repository: `Arpitsable/Pnuemonia-detection-system`.
 
-### Step 2: Configure Build Settings
-Vercel automatically detects Vite with the included `vercel.json`:
+### Step 2: Zero Configuration Needed
+Vercel automatically detects the configuration from `vercel.json`:
 - **Framework Preset**: Vite
-- **Build Command**: `npm run build`
-- **Output Directory**: `dist`
-- **Install Command**: `npm install`
+- **Frontend SPA**: Serves `dist/` with client routing.
+- **Backend API**: Automatically runs `api/index.py` on Vercel Serverless Functions with ONNX Runtime.
 
-### Step 3: Environment Variables (Optional)
-If you host the Python FastAPI backend on a cloud provider (such as Render, Railway, or Hugging Face Spaces):
-- Add `VITE_API_URL` = `https://your-backend-service.com` in **Vercel Project Settings → Environment Variables**.
+### Step 3: Deploy
+Click **Deploy**. Your entire system (frontend + AI prediction backend) is now live online!
 
-*(Note: If `VITE_API_URL` is not set, visitors can instantly test the site using the built-in **Demo Mode**).*
-
-### Step 4: Deploy
-Click **Deploy**. Your site will be live on your custom `.vercel.app` domain!
+*(Optional: If you ever want to point to a custom external backend, you can set the `VITE_API_URL` environment variable in Vercel Project Settings).*
 
 ---
 

@@ -8,10 +8,10 @@ import { models, type ModelKey, getModelByKey } from '@/data/models';
 import {
   predictXRay,
   simulatePrediction,
-  API_URL,
+  resolveApiBase,
   type PredictionResult,
 } from '@/data/mockPredict';
-import { Sparkles, BarChart3, CheckCircle, AlertCircle, PlayCircle } from 'lucide-react';
+import { Sparkles, BarChart3, CheckCircle, AlertCircle, PlayCircle, Loader2 } from 'lucide-react';
 
 type Phase = 'idle' | 'analyzing' | 'done';
 
@@ -29,18 +29,29 @@ export default function Upload() {
   useEffect(() => {
     let active = true;
     const checkHealth = async () => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500);
-        const res = await fetch(`${API_URL}/health`, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (active) {
-          setBackendOnline(res.ok);
+      const base = resolveApiBase();
+      const urlsToCheck = [
+        `${base}/health`,
+        base === '/api' ? 'http://127.0.0.1:8000/health' : null,
+      ].filter(Boolean) as string[];
+
+      for (const url of urlsToCheck) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 6000);
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (res.ok && active) {
+            setBackendOnline(true);
+            return;
+          }
+        } catch {
+          // Continue to next check
         }
-      } catch {
-        if (active) {
-          setBackendOnline(false);
-        }
+      }
+
+      if (active) {
+        setBackendOnline(false);
       }
     };
 
@@ -168,7 +179,7 @@ export default function Upload() {
                 <p className="font-semibold">Backend connection failed</p>
                 <p className="mt-1">{error}</p>
                 <p className="mt-2 text-xs text-red-600">
-                  Target API: <code className="bg-red-100 px-1 py-0.5 rounded">{API_URL}</code>.
+                  Target API: <code className="bg-red-100 px-1 py-0.5 rounded">{resolveApiBase()}</code>.
                   If hosting on Vercel, deploy your FastAPI backend (e.g. Render / Hugging Face)
                   or use Demo Mode below for instant preview.
                 </p>
