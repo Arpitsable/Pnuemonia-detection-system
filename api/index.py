@@ -173,3 +173,4 @@ async def process_predict(file: UploadFile):
 @app.post("/api/predict")
 async def predict(file: UploadFile = File(...)):
     return await process_predict(file)
+
