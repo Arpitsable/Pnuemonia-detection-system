@@ -14,3 +14,4 @@ This folder contains the trained deep learning weights and evaluation artifacts 
 - `chest_xray_model.keras`: Trained TensorFlow/Keras DenseNet121 model (~95% accuracy).
 - `class_names.json`: Classification labels (`NORMAL`, `PNEUMONIA`).
 - `training_log.csv`: Training and validation loss/accuracy across epochs.
+
